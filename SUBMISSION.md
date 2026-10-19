@@ -12,9 +12,9 @@
 | Async limit, timeout, retry and failure isolation | Verified | Fake-provider concurrency/retry/timeout tests and full suite pass. |
 | Actual Langfuse delivery and readback | Verified | Each new trace was fetched through the Langfuse read API. Sanitized exports are included in each run directory. |
 | Check traces have no gold-dependent scores | Verified | Both check traces returned zero scores; their reports contain null quality metrics and correctness fields. |
-| Fresh-machine setup validation | Incomplete | README commands are documented, but a clean machine/container install was not performed in this verification. |
+| Clean-environment setup validation | Verified | Created a fresh temporary virtual environment, installed `requirements.txt`, and ran all 116 tests successfully. A separate machine/container was not used. |
 | Candidate time spent and personal verification statement | Incomplete | The candidate's actual time and personal actions were not supplied and must not be guessed. Fill these in truthfully before submission. |
-| Reviewer access to the Langfuse project and repository | Incomplete | Trace URLs work for an authenticated project member. Grant the hiring team access if the project/repository is private. |
+| Reviewer access to the evidence | Verified with limitation | The GitHub repository is public and sanitized trace exports are committed. Direct Langfuse UI URLs still require an authenticated member of that Langfuse project. |
 
 ## Final run artifacts
 
@@ -72,6 +72,13 @@ Full test suite:
 116 passed in 7.18s
 ```
 
+Clean temporary virtual environment, dependencies freshly installed from
+`requirements.txt`:
+
+```text
+116 passed in 13.93s
+```
+
 PostgreSQL persistence tests were also run explicitly:
 
 ```text
@@ -94,9 +101,10 @@ repeated them.
 - Candidate hands-on time: **unknown**; no duration was provided.
 - Candidate's own tests/checks: **none reported**. The tests and live
   evaluations above were run by the assistant in this session.
-- Hiring-team access to the repository and Langfuse project: **not confirmed**;
-  grant access if either resource is private.
-- No hosted deployment or clean-room install was performed here.
+- The GitHub repository is public; direct Langfuse UI access still depends on
+  the reviewer being a member of the Langfuse project. The committed sanitized
+  exports provide trace evidence without requiring that access.
+- No hosted deployment or separate-machine install was performed here.
 - Optional Langfuse and model credentials stay in the ignored local `.env`;
   never stage that file. Ensure any previously exposed provider key has been
   revoked and replaced before submission.
