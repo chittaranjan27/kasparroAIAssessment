@@ -1,0 +1,35 @@
+{
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "settings": {
+    "request_timeout_seconds": 15.0,
+    "max_active_requests": 3,
+    "max_retries_per_turn": 1,
+    "max_turns_per_answer": 3,
+    "temperature": 0
+  },
+  "prompt_version": "v2",
+  "prompt_sha256": "8ddc3df626510500b3b09e4fc5b8b20412f61f433be3987133d6af5dad5567bb",
+  "dataset_version": {
+    "answers.csv": "fa28e813ea54b4e5ea985585f22f084d826241e1182accbc27ace17066125724",
+    "brand_facts.csv": "2190d40fad2dd167ef2437956c43d595aaf2554ea673a4789b9343cb7e2936f2"
+  },
+  "fact_version": "speaker-catalogue-v4",
+  "evaluator_version": "1.0",
+  "source_revision": "4b4ddd3e2740010435af28b192ddce00891b30dd",
+  "scheduled_answer_ids": [
+    "A41",
+    "A42",
+    "A43",
+    "A44",
+    "A45",
+    "A46",
+    "A47",
+    "A48",
+    "A49",
+    "A50"
+  ],
+  "started_at": "2026-10-19T08:33:17+00:00",
+  "status": "agent_complete",
+  "finished_at": "2026-10-19T08:33:50+00:00"
+}
