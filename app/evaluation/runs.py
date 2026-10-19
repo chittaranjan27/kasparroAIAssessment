@@ -61,6 +61,29 @@ def source_revision(cwd: Path) -> str | None:
         return None
 
 
+def source_tree_sha256(root: Path) -> str:
+    digest = hashlib.sha256()
+    source_dirs = (Path(root) / "app", Path(root) / "scripts")
+    files = sorted(
+        path
+        for source_dir in source_dirs
+        if source_dir.is_dir()
+        for path in source_dir.rglob("*.py")
+        if source_dir.name == "app" or path.name in {
+            "run_check.py",
+            "run_evaluation.py",
+            "validate_data.py",
+            "smoke_one.py",
+        }
+    )
+    for path in files:
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def run_metadata(
     *,
     provider_name: str,
@@ -87,6 +110,7 @@ def run_metadata(
         "fact_version": fact_version,
         "evaluator_version": EVALUATOR_VERSION,
         "source_revision": source_revision(root),
+        "source_tree_sha256": source_tree_sha256(root),
     }
 
 
@@ -131,6 +155,47 @@ def development_score_values(predictions, gold, answer_ids: set[str]) -> tuple[d
             "gold_coverage": per_answer.gold_coverage,
         }
     return run_scores, answer_scores
+
+
+def development_claim_scores(predictions, gold) -> list[dict]:
+    """Return only exact-span matches for post-match claim correctness scoring."""
+    predictions_by_span = {
+        (prediction.answer_id, claim.start_char, claim.end_char): claim
+        for prediction in predictions
+        if prediction.error is None
+        for claim in prediction.claims
+    }
+    claim_scores = []
+    for expected in gold:
+        key = (expected.answer_id, expected.start_char, expected.end_char)
+        claim = predictions_by_span.get(key)
+        if claim is None or claim.quote != expected.quote:
+            continue
+        claim_scores.append(
+            {
+                "answer_id": expected.answer_id,
+                "claim_id": claim.claim_id,
+                "span_id": f"{expected.answer_id}:{expected.start_char}:{expected.end_char}",
+                "start_char": expected.start_char,
+                "end_char": expected.end_char,
+                "label_correct": claim.label == expected.expected_label,
+            }
+        )
+    return claim_scores
+
+
+def development_score_metadata(score_result) -> dict:
+    return {
+        "G": score_result.G,
+        "P": score_result.P,
+        "M": score_result.M,
+        "C": score_result.C,
+        "missed_gold_ids": score_result.missed_gold_ids,
+        "unmatched_prediction_ids": score_result.unmatched_prediction_ids,
+        "wrong_label_ids": score_result.wrong_label_ids,
+        "answer_errors_total": score_result.answer_errors_total,
+        "answer_errors_by_code": score_result.answer_errors_by_code,
+    }
 
 
 def outcome_record(result: AnswerResult) -> dict:
@@ -182,6 +247,7 @@ async def execute_run(
         split=split,
         agent_version=agent_version,
         metadata={
+            **metadata,
             "prompt_version": metadata.get("prompt_version", agent_version),
             "fact_version": metadata.get("fact_version"),
             "evaluator_version": metadata.get("evaluator_version", EVALUATOR_VERSION),
@@ -197,6 +263,21 @@ async def execute_run(
                         "run_id": run_id,
                         "split": split,
                         "agent_version": agent_version,
+                        **{
+                            key: metadata[key]
+                            for key in (
+                                "provider",
+                                "model",
+                                "prompt_version",
+                                "prompt_sha256",
+                                "dataset_version",
+                                "fact_version",
+                                "evaluator_version",
+                                "source_revision",
+                                "settings",
+                            )
+                            if key in metadata
+                        },
                     },
                 )
             ): answer.answer_id
@@ -279,6 +360,7 @@ async def execute_run(
             "run_id": run_id,
             "trace_id": trace.trace_id,
             "base_url": trace.base_url,
+            "trace_url": trace.trace_url,
             "answer_observation_ids": answer_observation_ids,
         },
     )

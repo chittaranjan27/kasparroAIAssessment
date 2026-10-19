@@ -28,7 +28,11 @@ from app.db.repository import (
 )
 from app.db.session import get_session
 from app.evaluation.runs import EVALUATOR_VERSION, make_provider
-from app.evaluation.runs import development_score_values
+from app.evaluation.runs import (
+    development_claim_scores,
+    development_score_metadata,
+    development_score_values,
+)
 from app.schemas import Split
 from app.tracing import attach_development_scores, flush_traces
 
@@ -290,6 +294,8 @@ async def post_evaluation_run(body: EvaluationRunRequest):
                 run_scores=run_scores,
                 answer_scores=answer_scores,
                 answer_observation_ids=execution.answer_observation_ids,
+                claim_scores=development_claim_scores(predictions, gold_claims_list),
+                run_metadata=development_score_metadata(score_result),
             )
 
         db3 = get_session()

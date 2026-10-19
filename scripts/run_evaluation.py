@@ -24,6 +24,8 @@ from app.evaluation import data_loader  # noqa: E402
 from app.evaluation.report import build_records, render_text  # noqa: E402
 from app.evaluation.runs import (  # noqa: E402
     EVALUATOR_VERSION,
+    development_claim_scores,
+    development_score_metadata,
     execute_run,
     development_score_values,
     make_provider,
@@ -101,6 +103,8 @@ async def main() -> int:
         run_scores=run_scores,
         answer_scores=answer_scores,
         answer_observation_ids=execution.answer_observation_ids,
+        claim_scores=development_claim_scores(load_predictions(predictions_path), gold),
+        run_metadata=development_score_metadata(result),
     )
     flush_traces()
     predictions = load_predictions(predictions_path)
@@ -112,6 +116,7 @@ async def main() -> int:
         "run_dir": str(run_dir.relative_to(ROOT)),
         "langfuse_trace_id": execution.trace.trace_id,
         "langfuse_base_url": execution.trace.base_url,
+        "langfuse_trace_url": execution.trace.trace_url,
         "langfuse_enabled": execution.trace.trace_id is not None,
         "evaluator_version": EVALUATOR_VERSION,
         **meta,

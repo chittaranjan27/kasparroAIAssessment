@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 
 from app.agent.extractor import AgentError, ExtractedClaim, locate_spans, parse_output
@@ -49,6 +50,34 @@ async def run_answer(
         except AgentError as err:
             result.claims = []
             result.error = err
+        if span is not None:
+            span.update(
+                metadata={
+                    "outcome_status": (
+                        "error"
+                        if result.error
+                        else "valid_empty"
+                        if not result.claims
+                        else "ok"
+                    ),
+                    "turns": result.turns,
+                    "tool_call_count": len(result.tool_calls),
+                    "accepted_spans": [
+                        {
+                            "claim_id": claim.claim_id,
+                            "span_id": (
+                                f"{answer.answer_id}:{claim.start_char}:{claim.end_char}"
+                            ),
+                            "start_char": claim.start_char,
+                            "end_char": claim.end_char,
+                            "label": claim.label.value,
+                            "fact_ids": claim.evidence_fact_ids,
+                        }
+                        for claim in result.claims
+                    ],
+                    "validation_failure_code": result.error.code if result.error else None,
+                }
+            )
     return result
 
 
@@ -69,6 +98,7 @@ async def _run(
             model=getattr(provider, "model", None),
             metadata={"answer_id": answer.answer_id, "turn": turn},
         ) as generation:
+            request_started = time.perf_counter()
             try:
                 resp = await provider.acomplete(
                     messages, TOOL_DEFINITIONS, "required" if turn == 1 else "auto"
@@ -78,11 +108,27 @@ async def _run(
                     generation.update(
                         level="ERROR",
                         status_message="provider_timeout" if exc.timed_out else "provider_error",
+                        metadata={
+                            "latency_ms": round(
+                                (time.perf_counter() - request_started) * 1000, 2
+                            )
+                        },
                     )
                 code = "provider_timeout" if exc.timed_out else "provider_error"
                 raise AgentError(code, str(exc)) from exc
-            if generation is not None and resp.usage:
-                generation.update(usage_details=resp.usage)
+            if generation is not None:
+                generation.update(
+                    metadata={
+                        "latency_ms": round(
+                            (time.perf_counter() - request_started) * 1000, 2
+                        ),
+                        "requested_tool_calls": [
+                            {"tool_call_id": call.id, "name": call.name}
+                            for call in resp.tool_calls
+                        ],
+                    },
+                    usage_details=resp.usage or None,
+                )
 
         if not resp.tool_calls:
             if not result.tool_calls:
@@ -121,17 +167,44 @@ async def _run(
             if isinstance(brand_id, str):
                 call_detail["brand_id"] = brand_id
             result.tool_call_details.append(call_detail)
+            tool_started = time.perf_counter()
             try:
                 with observation(
-                    name="agent-tool-call",
+                    name="get_brand_facts",
                     as_type="tool",
                     metadata={
                         "answer_id": answer.answer_id,
                         "tool_name": tc.name,
+                        "tool_call_id": tc.id,
                         "brand_id": args.get("brand_id"),
                     },
-                ):
-                    output = execute_tool(tc.name, args, catalogue)  # fixed allowlist
+                ) as tool_observation:
+                    try:
+                        output = execute_tool(tc.name, args, catalogue)  # fixed allowlist
+                    except ToolError:
+                        if tool_observation is not None:
+                            tool_observation.update(
+                                level="ERROR",
+                                status_message="tool_error",
+                                metadata={
+                                    "latency_ms": round(
+                                        (time.perf_counter() - tool_started) * 1000, 2
+                                    )
+                                },
+                            )
+                        raise
+                    if tool_observation is not None:
+                        tool_observation.update(
+                            metadata={
+                                "latency_ms": round(
+                                    (time.perf_counter() - tool_started) * 1000, 2
+                                ),
+                                "returned_fact_count": len(output["facts"]),
+                                "returned_fact_ids": [
+                                    fact["fact_id"] for fact in output["facts"]
+                                ],
+                            }
+                        )
             except ToolError as exc:
                 raise AgentError("illegal_tool", str(exc)) from exc
             retrieved_ids.update(f["fact_id"] for f in output["facts"])

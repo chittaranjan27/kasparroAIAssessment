@@ -27,10 +27,13 @@ postgresql+psycopg2://<POSTGRES_USER>:<POSTGRES_PASSWORD>@localhost:5433/<POSTGR
 
 Set `OPENAI_API_KEY` for live model requests. Never commit `.env`. Optional
 Langfuse tracing requires `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`;
-`LANGFUSE_BASE_URL` may be set for a self-hosted service. The trace payloads
-contain safe IDs and metadata only, not prompt text, answer text, or fact-result
-contents. If Langfuse is not configured, trace IDs remain null and remote
-tracing is disabled.
+`LANGFUSE_BASE_URL` may be set for a self-hosted service. Traces include
+version/run/answer identifiers, accepted span offsets, validation error codes,
+request latency, and provider token usage when available; they do not include
+prompt text, answer text, or fact-result contents. Development scores are
+attached only after deterministic matching. Check runs do not receive gold-
+dependent scores. If Langfuse is not configured, trace IDs remain null and
+remote tracing is disabled.
 
 ## Start and initialize PostgreSQL
 
@@ -87,6 +90,12 @@ The check commands process the 10 final-check answers without loading gold;
 their gold-dependent metrics and correctness fields remain null. Each new run
 uses a timestamped report and evidence directory, preserving existing reports.
 Detailed run evidence is written under `artifacts\runs`. Each run's
-`langfuse-traces.json` records the actual run trace ID, base URL, and answer
-observation IDs when tracing is enabled; open that Langfuse instance and search
-for the trace ID to review it. Disabled tracing records null IDs instead.
+`langfuse-traces.json` records the actual run trace ID, direct trace URL, base
+URL, and answer observation IDs when tracing is enabled. Open the URL while
+signed into the configured Langfuse project. Development trace scores include
+per-answer extraction/joint F1, matched-claim `label_correct` scores, aggregate
+metrics, and the missed/extra claim IDs. Check traces record predictions and
+errors only. Disabled tracing records null IDs instead.
+
+See [SUBMISSION.md](./SUBMISSION.md) for the final evidence checklist, measured
+v1/v2 comparison, trace links, and remaining candidate-specific disclosures.

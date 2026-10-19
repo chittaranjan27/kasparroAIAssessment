@@ -19,6 +19,7 @@ class TraceContext:
     trace_id: str | None
     run_observation_id: str | None
     base_url: str | None
+    trace_url: str | None = None
 
 
 _CURRENT_TRACE: ContextVar[TraceContext | None] = ContextVar(
@@ -88,11 +89,18 @@ def run_trace(
             "agent_version": agent_version,
         },
     ) as span:
+        client = get_langfuse_client()
+        trace_id = getattr(span, "trace_id", None)
         context = TraceContext(
             run_id=run_id,
-            trace_id=getattr(span, "trace_id", None),
+            trace_id=trace_id,
             run_observation_id=getattr(span, "id", None),
             base_url=base_url if span is not None else None,
+            trace_url=(
+                client.get_trace_url(trace_id=trace_id)
+                if client is not None and trace_id is not None
+                else None
+            ),
         )
         token = _CURRENT_TRACE.set(context)
         try:
@@ -124,18 +132,23 @@ def attach_development_scores(
     run_scores: dict[str, float],
     answer_scores: dict[str, dict[str, float]],
     answer_observation_ids: dict[str, str | None],
+    claim_scores: list[dict] | None = None,
+    run_metadata: dict[str, Any] | None = None,
 ) -> None:
     client = get_langfuse_client()
     if client is None or trace_id is None:
         return
     for name, value in run_scores.items():
-        client.create_score(
+        score_args = dict(
             trace_id=trace_id,
             name=name,
             value=value,
             data_type="NUMERIC",
             comment="Deterministic development-set score computed after exact-span matching.",
         )
+        if name == "joint_f1" and run_metadata is not None:
+            score_args["metadata"] = run_metadata
+        client.create_score(**score_args)
     for answer_id, scores in answer_scores.items():
         observation_id = answer_observation_ids.get(answer_id)
         if observation_id is None:
@@ -150,6 +163,25 @@ def attach_development_scores(
                 comment="Deterministic per-answer development score computed after exact-span matching.",
                 metadata={"answer_id": answer_id},
             )
+    for item in claim_scores or []:
+        observation_id = answer_observation_ids.get(item["answer_id"])
+        if observation_id is None:
+            continue
+        client.create_score(
+            trace_id=trace_id,
+            observation_id=observation_id,
+            name="label_correct",
+            value=1 if item["label_correct"] else 0,
+            data_type="NUMERIC",
+            comment="Deterministic correctness for an exact-span matched development claim.",
+            metadata={
+                "answer_id": item["answer_id"],
+                "claim_id": item["claim_id"],
+                "span_id": item["span_id"],
+                "start_char": item["start_char"],
+                "end_char": item["end_char"],
+            },
+        )
 
 
 def flush_traces() -> None:

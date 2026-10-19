@@ -198,6 +198,7 @@ async def main() -> int:
         "run_status": "complete",
         "langfuse_trace_id": execution.trace.trace_id,
         "langfuse_base_url": execution.trace.base_url,
+        "langfuse_trace_url": execution.trace.trace_url,
         "langfuse_enabled": execution.trace.trace_id is not None,
         "split": "check",
         "answer_ids": expected_ids,

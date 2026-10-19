@@ -1,0 +1,51 @@
+{
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "settings": {
+    "request_timeout_seconds": 15.0,
+    "max_active_requests": 3,
+    "max_retries_per_turn": 1,
+    "max_turns_per_answer": 3,
+    "temperature": 0
+  },
+  "prompt_version": "v1",
+  "prompt_sha256": "ddf5a4cc6b39a38be5baa3bc858be422cfd983098d374eb8325497655d6453ba",
+  "dataset_version": {
+    "answers.csv": "fa28e813ea54b4e5ea985585f22f084d826241e1182accbc27ace17066125724",
+    "brand_facts.csv": "2190d40fad2dd167ef2437956c43d595aaf2554ea673a4789b9343cb7e2936f2"
+  },
+  "fact_version": "speaker-catalogue-v4",
+  "evaluator_version": "1.0",
+  "source_revision": "33fb06b4de9475e05968786c280610643de20872",
+  "source_tree_sha256": "4d217026d68d72cfc6ef05dbe7f73ec4f216522f4ed4e52faf025a741abf89f9",
+  "scheduled_answer_ids": [
+    "A41",
+    "A42",
+    "A43",
+    "A44",
+    "A45",
+    "A46",
+    "A47",
+    "A48",
+    "A49",
+    "A50"
+  ],
+  "started_at": "2026-10-19T11:28:53+00:00",
+  "status": "agent_complete",
+  "langfuse_trace_id": "af103d31d8ffbdc81e375cc4b95e60b1",
+  "langfuse_base_url": "https://cloud.langfuse.com",
+  "langfuse_enabled": true,
+  "answer_observation_ids": {
+    "A41": "d6b370017c13db48",
+    "A42": "c44a60acb1f162cc",
+    "A43": "3543876f396fc6a0",
+    "A44": "9799ad5376a831ba",
+    "A45": "4c945321e86b3b50",
+    "A46": "9b5c4926cee26494",
+    "A47": "6f3f036dbadcb6e9",
+    "A48": "fd0ab2f45cd9e2f4",
+    "A49": "e87b9c9449f269c0",
+    "A50": "99f351e48b602a30"
+  },
+  "finished_at": "2026-10-19T11:29:18+00:00"
+}
